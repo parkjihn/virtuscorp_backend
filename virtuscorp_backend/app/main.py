@@ -1,8 +1,9 @@
 from fastapi import FastAPI
-import os
+from app.middleware.cors import add_cors_middleware
 
 app = FastAPI()
 
+add_cors_middleware(app) 
 
 @app.get("/")
 def read_root():
