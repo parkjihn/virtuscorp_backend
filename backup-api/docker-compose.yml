@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  api:
+    image: virtuscorp_backend:latest  # Используем предварительно собранный образ
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    secrets:
+      - db_password
+    environment:
+      - DATABASE_URL=postgresql://postgres:@db:5432/virtuscorp_db
+
+  db:
+    image: postgres:13
+    deploy:
+      replicas: 1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: virtuscorp_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    secrets:
+      - db_password
+
+volumes:
+  postgres_data:
+
+secrets:
+  db_password:
+    external: true

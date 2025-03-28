@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  api:
+    image: mikeondar416/virtuscorp_backend:latest
+    restart: unless-stopped
+    ports:
+      - target: 8000
+        published: 8000
+        protocol: tcp
+        mode: host
+    depends_on:
+      - db
+    secrets:
+      - db_password
+    environment:
+      - DATABASE_URL_FILE=/run/secrets/db_url
+    deploy:
+      replicas: 1
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: virtuscorp_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    secrets:
+      - db_password
+    deploy:
+      replicas: 1
+
+volumes:
+  postgres_data:
+
+secrets:
+  db_password:
+    external: true
