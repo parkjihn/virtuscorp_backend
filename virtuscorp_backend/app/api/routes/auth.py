@@ -5,13 +5,29 @@ from app.utils.helpers import create_access_token
 
 router = APIRouter()
 
+
 @router.post("/register")
 async def register(user: UserCreate):
     existing = await get_user_by_email(user.email)
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
+
     new_user = await create_user(user)
-    return {"message": "User registered successfully", "user_id": new_user.id}
+
+    return {
+        "message": "User registered successfully",
+        "user": {
+            "id": new_user.id,
+            "full_name": new_user.full_name,
+            "email": new_user.email,
+            "language": new_user.language,
+            "timezone": new_user.timezone,
+            "theme": new_user.theme,
+            "profile_picture": new_user.profile_picture,
+            "is_active": new_user.is_active,
+        }
+    }
+
 
 @router.post("/login")
 async def login(user: UserLogin):
