@@ -11,8 +11,13 @@ async def create_user(user_data):
     return await User.create(
         full_name=user_data.full_name,
         email=user_data.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        language=user_data.language,
+        timezone=user_data.timezone,
+        theme=user_data.theme,
+        profile_picture=user_data.profile_picture
     )
+
 
 async def verify_user(email: str, password: str):
     user = await get_user_by_email(email)
