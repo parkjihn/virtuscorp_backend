@@ -4,4 +4,5 @@ asyncpg
 tortoise-orm
 aerich
 pydantic[email]
+passlib[bcrypt]
 
