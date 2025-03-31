@@ -20,11 +20,8 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          # Собираем образ из каталога с вашим Dockerfile (например, ./virtuscorp_backend)
           docker build -t virtuscorp_backend:latest ./virtuscorp_backend
-          # Тегируем образ для Docker Hub
           docker tag virtuscorp_backend:latest ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
-          # Отправляем образ в Docker Hub
           docker push ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
 
   deploy:
@@ -40,14 +37,15 @@ jobs:
 
       - name: Deploy on Server
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            set -e  # Прерываем выполнение при ошибках
-            # Логинимся в Docker Hub на сервере
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << "EOF"
+            set -e
             echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-            # Переходим в каталог с docker-compose файлом
+
             cd /home/deploy/www
-            # Обновляем (или создаем) стек Swarm, используя docker stack deploy
             docker stack deploy -c docker-compose.yml virtuscorp
-            # Очистка неиспользуемых образов (по желанию)
+
             docker system prune -af
           EOF
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
