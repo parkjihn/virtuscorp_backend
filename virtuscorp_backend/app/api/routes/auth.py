@@ -20,11 +20,6 @@ async def register(user: UserCreate):
             "id": new_user.id,
             "full_name": new_user.full_name,
             "email": new_user.email,
-            "language": new_user.language,
-            "timezone": new_user.timezone,
-            "theme": new_user.theme,
-            "profile_picture": new_user.profile_picture,
-            "is_active": new_user.is_active,
         }
     }
 
