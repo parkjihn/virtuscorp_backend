@@ -1,13 +1,15 @@
 name: Deploy VirtusCorp
 
+# Триггер выполнения workflow
 on:
   pull_request:
     types:
       - closed
     branches:
-      - main  # Деплой запускается при закрытии Pull Request в main
+      - main  # Запускается только при закрытии Pull Request в ветку main
 
 jobs:
+  # Сборка и отправка Docker-образа
   build_and_push:
     if: github.event.pull_request.merged == true  # Запускать только если PR был успешно слит
     runs-on: ubuntu-latest
@@ -20,12 +22,16 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
+          # Собираем образ из каталога с Dockerfile (например, ./virtuscorp_backend)
           docker build -t virtuscorp_backend:latest ./virtuscorp_backend
+          # Тегируем образ для Docker Hub
           docker tag virtuscorp_backend:latest ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
+          # Отправляем образ в Docker Hub
           docker push ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
 
+  # Развертывание на сервере
   deploy:
-    needs: build_and_push
+    needs: build_and_push  # Этот job зависит от завершения build_and_push
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
@@ -37,15 +43,21 @@ jobs:
 
       - name: Deploy on Server
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << "EOF"
-            set -e
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e  # Прерываем выполнение при ошибках
+            
+            # Логинимся в Docker Hub на сервере
             echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-
+            
+            # Переходим в каталог с docker-compose.yml
             cd /home/deploy/www
-            docker stack deploy -c docker-compose.yml virtuscorp
-
+            
+            # Обновляем стек, указывая путь к docker-compose.yml и имя стека
+            docker stack deploy \
+              --with-registry-auth \
+              -c docker-compose.yml \
+              virtuscorp_stack
+            
+            # Очистка неиспользуемых образов (по желанию)
             docker system prune -af
           EOF
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
