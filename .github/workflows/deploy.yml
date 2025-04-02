@@ -20,11 +20,8 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          # Собираем образ из каталога с вашим Dockerfile (например, ./virtuscorp_tst)
           docker build -t virtuscorp_backend:latest ./virtuscorp_backend
-          # Тегируем образ для Docker Hub
           docker tag virtuscorp_backend:latest ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
-          # Отправляем образ в Docker Hub
           docker push ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
 
   deploy:
@@ -42,12 +39,21 @@ jobs:
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             set -e  # Прерываем выполнение при ошибках
-            # Логинимся в Docker Hub на сервере
+
+            # Логинимся в Docker Hub
             docker login -u "${{ secrets.DOCKER_USERNAME }}" --password "${{ secrets.DOCKER_PASSWORD }}"
-            # Переходим в каталог с docker-compose файлом
+
+            # Переходим в папку с docker-compose.yml
             cd /home/deploy/www
-            # Обновляем (или создаем) стек Swarm, используя docker stack deploy
+
+            # Удаляем старый стек
+            docker stack rm virtuscorp_stack || true
+            echo "Waiting for stack to be removed..."
+            sleep 10
+
+            # Деплойим заново
             docker stack deploy -c docker-compose.yml virtuscorp_stack
-            # Очистка неиспользуемых образов (по желанию)
+
+            # Очистка ненужных ресурсов
             docker system prune -af
           EOF
