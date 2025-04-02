@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
 from app.crud.user import create_user, verify_user, get_user_by_email
 from app.utils.helpers import create_access_token
 
 router = APIRouter()
-
 
 @router.post("/register")
 async def register(user: UserCreate):
@@ -23,18 +23,35 @@ async def register(user: UserCreate):
         }
     }
 
-
 @router.post("/login")
 async def login(user: UserLogin):
     # 🔐 Мастер-доступ
     if user.email == "admin@example.com" and user.password == "admin1234":
         token = create_access_token({"sub": user.email})
-        return {"access_token": token, "token_type": "bearer"}
+        response = JSONResponse(content={"message": "Login successful (admin)"})
+        response.set_cookie(
+            key="auth-token",
+            value=token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=3600,
+        )
+        return response
 
-    # Обычная проверка из базы
+    # Проверка пользователя из БД
     user_db = await verify_user(user.email, user.password)
     if not user_db:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": user_db.email})
-    return {"access_token": token, "token_type": "bearer"}
+    response = JSONResponse(content={"message": "Login successful"})
+    response.set_cookie(
+        key="auth-token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=3600,
+    )
+    return response
