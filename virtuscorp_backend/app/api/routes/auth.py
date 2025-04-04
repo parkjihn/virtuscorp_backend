@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
 from app.crud.user import create_user, verify_user, get_user_by_email
 from app.utils.helpers import create_access_token
+import os
 
 router = APIRouter()
 
@@ -33,9 +34,11 @@ async def login(user: UserLogin):
             key="auth-token",
             value=token,
             httponly=True,
-            secure=True,
+            # Set secure to False for local development
+            secure=os.environ.get("VERCEL_ENV") == "production",
             samesite="lax",
             max_age=3600,
+            httponly=True,
         )
         return response
 
@@ -49,9 +52,11 @@ async def login(user: UserLogin):
     response.set_cookie(
         key="auth-token",
         value=token,
-        httponly=True,
-        secure=True,
+        # Set secure to False for local development
+        secure=os.environ.get("VERCEL_ENV") == "production",
         samesite="lax",
         max_age=3600,
+        httponly=True,
     )
     return response
+
