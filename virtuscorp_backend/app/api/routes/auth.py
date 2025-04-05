@@ -9,6 +9,9 @@ router = APIRouter()
 
 @router.post("/register")
 async def register(user: UserCreate):
+    if user.password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
     existing = await get_user_by_email(user.email)
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
