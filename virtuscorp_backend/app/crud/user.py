@@ -3,8 +3,10 @@ from app.models.user import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 async def get_user_by_email(email: str):
     return await User.get_or_none(email=email)
+
 
 async def create_user(user_data):
     hashed_password = pwd_context.hash(user_data.password)
