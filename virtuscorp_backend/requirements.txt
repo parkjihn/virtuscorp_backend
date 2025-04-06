@@ -3,7 +3,7 @@ uvicorn[standard]
 asyncpg
 tortoise-orm
 aerich
-pydantic[email]
+pydantic[email]>=2.1
 passlib[bcrypt]
 python-jose
 
