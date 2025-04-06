@@ -1,0 +1,19 @@
+name: Auto Merge Copilot Approved PRs
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    if: github.event.review.user.login == 'github-copilot' && github.event.review.state == 'approved'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Auto-merge pull request
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          merge-method: squash
