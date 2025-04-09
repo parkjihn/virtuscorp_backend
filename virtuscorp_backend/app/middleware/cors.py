@@ -6,7 +6,9 @@ def add_cors_middleware(app: FastAPI):
         "http://localhost:3000",
         "http://localhost",
         "https://virtuscorp.site",
+        "http://virtuscorp.site",
         "https://api.virtuscorp.site",
+        "http://api.virtuscorp.site",
         "*"  # Временно разрешаем все источники для отладки
     ]
 
@@ -15,6 +17,6 @@ def add_cors_middleware(app: FastAPI):
         allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["Set-Cookie"]  # Важно для работы с куками
+        allow_headers=["*", "x-auth-token"],
+        expose_headers=["*", "Set-Cookie"]
     )
