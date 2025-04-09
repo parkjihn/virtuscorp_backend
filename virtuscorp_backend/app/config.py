@@ -2,6 +2,7 @@
 
 import os
 
+
 def get_database_url():
     try:
         with open("/run/secrets/db_password", "r") as f:
