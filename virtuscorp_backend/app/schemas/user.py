@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, root_validator
+from pydantic import BaseModel, EmailStr, model_validator
 
 class UserCreate(BaseModel):
     full_name: str
@@ -6,13 +6,12 @@ class UserCreate(BaseModel):
     password: str
     confirm_password: str
 
-    @root_validator
-    def validate_passwords_match(cls, values):
-        pw = values.get('password')
-        cpw = values.get('confirm_password')
-        if pw != cpw:
+    @model_validator(mode='after')
+    def validate_passwords_match(self):
+        if self.password != self.confirm_password:
             raise ValueError("Passwords do not match")
-        return values
+        return self
+
 
 class UserLogin(BaseModel):
     email: EmailStr
