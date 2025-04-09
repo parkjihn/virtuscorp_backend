@@ -1,8 +1,12 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
 from app.crud.user import create_user, verify_user, get_user_by_email
 from app.utils.helpers import create_access_token
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -29,29 +33,42 @@ async def register(user: UserCreate):
 
 
 @router.post("/login")
-async def login(user: UserLogin):
-    # Проверка пользователя из базы
-    user_db = await verify_user(user.email, user.password)
-    if not user_db:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+async def login(user: UserLogin, request: Request):
+    try:
+        # Проверка пользователя из базы
+        user_db = await verify_user(user.email, user.password)
+        if not user_db:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Генерация токена
-    token = create_access_token({"sub": user_db.email})
+        # Генерация токена
+        token = create_access_token({"sub": user_db.email})
+        
+        # Логирование для отладки
+        logger.info(f"Login successful for user: {user.email}")
+        logger.info(f"Generated token: {token[:10]}...")
 
-    # Ответ с установкой куки
-    response = JSONResponse(content={
-        "message": "Login successful",
-        "access_token": token  # Добавляем токен в ответ для фронтенда
-    })
-    
-    # Устанавливаем cookie с менее строгими настройками для разработки
-    # В production рекомендуется использовать secure=True
-    response.set_cookie(
-        key="auth-token",
-        value=token,
-        httponly=True,
-        secure=False,  # Изменено с True на False для работы без HTTPS
-        samesite="lax",  # Изменено с "strict" на "lax" для лучшей совместимости
-        path="/"
-    )
-    return response
+        # Создаем обычный Response вместо JSONResponse
+        response = Response(
+            content=f'{{"message": "Login successful", "access_token": "{token}"}}',
+            media_type="application/json"
+        )
+        
+        # Устанавливаем cookie с минимальными ограничениями для отладки
+        response.set_cookie(
+            key="auth-token",
+            value=token,
+            httponly=False,  # Позволяем JavaScript читать куки для отладки
+            secure=False,    # Работает без HTTPS
+            samesite="none", # Наименее строгая настройка
+            path="/"
+        )
+        
+        # Логирование для отладки
+        logger.info("Cookie set in response")
+        
+        return response
+        
+    except Exception as e:
+        # Логирование ошибок
+        logger.error(f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Login error: {str(e)}")
