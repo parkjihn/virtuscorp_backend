@@ -4,8 +4,10 @@ from fastapi import FastAPI
 def add_cors_middleware(app: FastAPI):
     origins = [
         "http://localhost:3000",
+        "http://localhost",
         "https://virtuscorp.site",
-        "https://api.virtuscorp.site",  
+        "https://api.virtuscorp.site",
+        "*"  # Временно разрешаем все источники для отладки
     ]
 
     app.add_middleware(
@@ -14,4 +16,5 @@ def add_cors_middleware(app: FastAPI):
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Set-Cookie"]  # Важно для работы с куками
     )

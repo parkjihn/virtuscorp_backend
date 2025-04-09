@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
 from app.crud.user import create_user, verify_user, get_user_by_email
@@ -39,13 +39,19 @@ async def login(user: UserLogin):
     token = create_access_token({"sub": user_db.email})
 
     # Ответ с установкой куки
-    response = JSONResponse(content={"message": "Login successful"})
+    response = JSONResponse(content={
+        "message": "Login successful",
+        "access_token": token  # Добавляем токен в ответ для фронтенда
+    })
+    
+    # Устанавливаем cookie с менее строгими настройками для разработки
+    # В production рекомендуется использовать secure=True
     response.set_cookie(
         key="auth-token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=False,  # Изменено с True на False для работы без HTTPS
+        samesite="lax",  # Изменено с "strict" на "lax" для лучшей совместимости
         path="/"
     )
     return response
