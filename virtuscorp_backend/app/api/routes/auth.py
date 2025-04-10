@@ -43,28 +43,25 @@ async def login(user: UserLogin, request: Request):
         # Генерация токена
         token = create_access_token({"sub": user_db.email})
         
-        # Логирование для отладки
-        logger.info(f"Login successful for user: {user.email}")
-        logger.info(f"Generated token: {token[:10]}...")
-
-        # Создаем обычный Response вместо JSONResponse
-        response = Response(
-            content=f'{{"message": "Login successful", "access_token": "{token}"}}',
-            media_type="application/json"
-        )
+        # Создаем JSON-ответ
+        content = {
+            "message": "Login successful",
+            "access_token": token
+        }
         
-        # Устанавливаем cookie с минимальными ограничениями для отладки
+        # Создаем response с правильными настройками CORS
+        response = JSONResponse(content=content)
+        
+        # Устанавливаем cookie с правильными настройками
         response.set_cookie(
             key="auth-token",
             value=token,
-            httponly=False,  # Позволяем JavaScript читать куки для отладки
-            secure=False,    # Работает без HTTPS
-            samesite="none", # Наименее строгая настройка
-            path="/"
+            httponly=True,  # Для безопасности в продакшене
+            secure=False,   # Установите True в продакшене с HTTPS
+            samesite="lax", # Более безопасная настройка, работает в большинстве браузеров
+            path="/",
+            max_age=3600    # 1 час
         )
-        
-        # Логирование для отладки
-        logger.info("Cookie set in response")
         
         return response
         
