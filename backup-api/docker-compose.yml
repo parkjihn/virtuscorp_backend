@@ -24,7 +24,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     secrets:
       - db_password
-
+       
 volumes:
   postgres_data:
 
