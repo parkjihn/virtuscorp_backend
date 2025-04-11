@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   api:
+    container_name: virtuscorp_api
     image: mikeondar416/virtuscorp_backend:latest
     restart: unless-stopped
     ports:
@@ -15,12 +16,12 @@ services:
       - db_password
     environment:
       - DATABASE_URL_FILE=/run/secrets/db_url
-    deploy:
-      replicas: 1
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   db:
+    container_name: virtuscorp_db
     image: postgres:13
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
@@ -29,8 +30,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     secrets:
       - db_password
-    deploy:
-      replicas: 1
 
 volumes:
   postgres_data:
