@@ -8,7 +8,8 @@ TORTOISE_ORM = {
                 "app.models.user",
                 "app.models.metric",
                 "app.models.report",
-                "aerich.models",  # важно для миграций!
+                "app.models.yandex",
+                "aerich.models",
             ],
             "default_connection": "default",
         },
