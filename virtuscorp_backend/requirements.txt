@@ -6,4 +6,4 @@ aerich
 pydantic[email]
 passlib[bcrypt]
 python-jose
-
+axios
