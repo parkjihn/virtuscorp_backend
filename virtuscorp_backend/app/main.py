@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from app.middleware.cors import add_cors_middleware
-from app.api.routes import auth
-from app.api.routes import yandex  # добавлено
+from app.api.routes import auth, yandex, metrics  # добавлен metrics
 from tortoise.contrib.fastapi import register_tortoise
 from app.db.database import TORTOISE_ORM
 
@@ -10,7 +9,8 @@ app = FastAPI()
 add_cors_middleware(app)
 
 app.include_router(auth.router, prefix="/auth")
-app.include_router(yandex.router, prefix="/api")  # добавлено
+app.include_router(yandex.router, prefix="/api")
+app.include_router(metrics.router, prefix="/api")  
 
 register_tortoise(
     app,
@@ -18,6 +18,7 @@ register_tortoise(
     generate_schemas=True,
     add_exception_handlers=True,
 )
+
 
 @app.get("/")
 def read_root():
