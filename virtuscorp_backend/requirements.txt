@@ -9,3 +9,4 @@ python-jose
 axios
 httpx
 pandas
+python-multipart
