@@ -14,3 +14,4 @@ class YandexIntegration(Model):
 
     def __str__(self):
         return f"Yandex for {self.user.email}"
+
