@@ -5,11 +5,11 @@ on:
     types:
       - closed
     branches:
-      - main
+      - main  # Деплой запускается при закрытии Pull Request в main
 
 jobs:
   build_and_push:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true  # Запускать только если PR был успешно слит
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -20,8 +20,11 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
+          # Собираем образ из каталога с вашим Dockerfile (например, ./virtuscorp_tst)
           docker build -t virtuscorp_backend:latest ./virtuscorp_backend
+          # Тегируем образ для Docker Hub
           docker tag virtuscorp_backend:latest ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
+          # Отправляем образ в Docker Hub
           docker push ${{ secrets.DOCKER_USERNAME }}/virtuscorp_backend:latest
 
   deploy:
@@ -30,15 +33,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        
-      - name: Copy docker-compose file to server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.yml"
-          target: "/home/deploy/www"
 
       - name: Setup SSH
         run: |
@@ -47,23 +41,21 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Copy docker-compose file to server
+        run: |
+          # Copy and overwrite the docker-compose file to the server
+          scp ./docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/deploy/www/
+
       - name: Deploy on Server
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            set -e
+            set -e  # Прерываем выполнение при ошибках
+            # Логинимся в Docker Hub на сервере
             docker login -u "${{ secrets.DOCKER_USERNAME }}" --password "${{ secrets.DOCKER_PASSWORD }}"
+            # Переходим в каталог с docker-compose файлом
             cd /home/deploy/www
-            
-            # Create network if it doesn't exist
-            docker network create --driver overlay --attachable virtuscorp_network  true
-            
-            # Update secrets if needed (create them if they don't exist)
-            echo "${{ secrets.DB_PASSWORD }}" | docker secret create db_password -  echo "Secret db_password already exists"
-            echo "${{ secrets.DB_URL }}" | docker secret create db_url - || echo "Secret db_url already exists"
-            
-            # Deploy stack
-            docker stack deploy -c docker-compose.yml virtuscorp_stack --with-registry-auth
-            
-            # Clean up
-            docker system prune -f
+            # Обновляем (или создаем) стек Swarm, используя docker stack deploy
+            docker stack deploy -c docker-compose.yml virtuscorp_stack
+            # Очистка неиспользуемых образов (по желанию)
+            docker system prune -af
           EOF
