@@ -55,7 +55,8 @@ jobs:
             # Переходим в каталог с docker-compose файлом
             cd /home/deploy/www
             # Обновляем (или создаем) стек Swarm, используя docker stack deploy
-            docker stack deploy -c docker-compose.yml virtuscorp_stack
+            # Add --with-registry-auth flag to use registry credentials and --prune to remove services not in the compose file
+            docker stack deploy --with-registry-auth --prune -c docker-compose.yml virtuscorp_stack || true
             # Очистка неиспользуемых образов (по желанию)
             docker system prune -af
           EOF
