@@ -6,8 +6,8 @@ import os
 import glob
 import logging
 
-# Set up logging
-logger = logging.getLogger(name)
+# Set up logging correctly
+logger = logging.getLogger(name)  # Use name instead of name
 
 router = APIRouter(tags=["metrics"])
 UPLOAD_DIR = "uploaded_files"
