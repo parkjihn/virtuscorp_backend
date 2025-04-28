@@ -10,4 +10,3 @@ axios
 httpx
 pandas
 python-multipart
-traceback
