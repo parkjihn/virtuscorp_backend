@@ -10,3 +10,4 @@ axios
 httpx
 pandas
 python-multipart
+openpyxl
