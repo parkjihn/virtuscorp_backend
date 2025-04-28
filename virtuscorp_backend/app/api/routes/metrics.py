@@ -36,4 +36,4 @@ async def get_uploaded_data(current_user: User = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read file: {e}")
 
-    return {"data": df.to_dict(orient="records")}
+    return {"data": df.fillna(0).to_dict(orient="records")}
