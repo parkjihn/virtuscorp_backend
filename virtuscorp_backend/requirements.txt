@@ -11,3 +11,4 @@ httpx
 pandas
 python-multipart
 openpyxl
+reportlab
