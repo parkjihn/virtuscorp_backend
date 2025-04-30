@@ -7,6 +7,7 @@ class User(Model):
     full_name = fields.CharField(max_length=255)
     hashed_password = fields.CharField(max_length=255)
     created_at = fields.DatetimeField(auto_now_add=True)
+    # These fields are defined in the model but don't exist in the database yet
     position = fields.CharField(max_length=255, null=True)
     department = fields.CharField(max_length=255, null=True)
     phone = fields.CharField(max_length=50, null=True)
