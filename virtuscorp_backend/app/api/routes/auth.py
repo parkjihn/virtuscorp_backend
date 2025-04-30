@@ -34,6 +34,7 @@ async def register(user: UserCreate):
     }
 
 
+# Fix the login route to handle the case where columns don't exist more gracefully
 @router.post("/login")
 async def login(user: UserLogin, request: Request):
     try:
@@ -49,6 +50,7 @@ async def login(user: UserLogin, request: Request):
         except Exception as e:
             # If the column doesn't exist, log the error but continue
             logger.warning(f"Could not update last_login: {str(e)}")
+            # Don't let this error affect the login process
 
         # Генерация токена
         token = create_access_token({"sub": user_db.email})
