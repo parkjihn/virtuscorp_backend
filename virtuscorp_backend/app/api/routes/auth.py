@@ -32,7 +32,7 @@ async def register(user: UserCreate):
             "id": new_user.id,
             "full_name": new_user.full_name,
             "email": new_user.email,
-        }
+        },
     }
 
 
@@ -44,8 +44,7 @@ async def login(user: UserLogin, request: Request):
         if not user_db:
             # Return 401 directly instead of raising an exception that gets caught later
             return JSONResponse(
-                status_code=401,
-                content={"detail": "Invalid credentials"}
+                status_code=401, content={"detail": "Invalid credentials"}
             )
 
         # Update last login time - with error handling for missing column
@@ -59,34 +58,30 @@ async def login(user: UserLogin, request: Request):
 
         # Generate token
         token = create_access_token({"sub": user_db.email})
-        
+
         # Create response content
-        content = {
-            "message": "Login successful",
-            "access_token": token
-        }
-        
+        content = {"message": "Login successful", "access_token": token}
+
         # Create response with proper cookie settings
         response = JSONResponse(content=content)
-        
+
         # Set secure cookie - this is critical for authentication
         response.set_cookie(
             key="auth-token",
             value=token,
             httponly=True,  # Improves security
-            secure=True,    # For HTTPS
-            samesite="lax", # Safer setting that works in most browsers
+            secure=True,  # For HTTPS
+            samesite="lax",  # Safer setting that works in most browsers
             path="/",
-            max_age=86400   # 24 hours - increased from 1 hour
+            max_age=86400,  # 24 hours - increased from 1 hour
         )
-        
+
         return response
-        
+
     except Exception as e:
         # Log errors
         logger.error(f"Login error: {str(e)}")
         # Return 500 error with details
         return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"}
+            status_code=500, content={"detail": "Internal server error"}
         )

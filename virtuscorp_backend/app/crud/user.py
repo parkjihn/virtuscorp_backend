@@ -11,12 +11,12 @@ async def create_user(user_data):
     return await User.create(
         full_name=user_data.full_name,
         email=user_data.email,
-        hashed_password=hashed_password,
+        password_hash=hashed_password,  # Changed from hashed_password to password_hash
     )
 
 
 async def verify_user(email: str, password: str):
     user = await get_user_by_email(email)
-    if user and pwd_context.verify(password, user.hashed_password):
+    if user and pwd_context.verify(password, user.password_hash):  # Changed from hashed_password to password_hash
         return user
     return None
