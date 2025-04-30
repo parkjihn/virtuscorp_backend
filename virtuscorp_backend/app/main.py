@@ -24,6 +24,11 @@ if not os.path.exists(uploads_dir):
     
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
+# Create uploaded_files directory if it doesn't exist
+uploaded_files_dir = "uploaded_files"
+if not os.path.exists(uploaded_files_dir):
+    os.makedirs(uploaded_files_dir)
+
 register_tortoise(
     app,
     config=TORTOISE_ORM,

@@ -6,7 +6,7 @@ from app.schemas.user import UserCreate, UserLogin
 from app.crud.user import create_user, verify_user, get_user_by_email
 from app.utils.helpers import create_access_token
 from app.models.user import User
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 # Set up logging
@@ -46,7 +46,8 @@ async def login(user: UserLogin, request: Request):
 
         # Update last login time - with error handling for missing column
         try:
-            user_db.last_login = datetime.utcnow()
+            # Fix: Use timezone-aware datetime
+            user_db.last_login = datetime.now(timezone.utc)
             await user_db.save()
         except Exception as e:
             # Log the error but don't fail the login process

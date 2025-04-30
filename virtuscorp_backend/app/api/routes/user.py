@@ -3,7 +3,7 @@ from app.models.user import User
 from app.schemas.user import UserProfileUpdate, UserProfileResponse
 from app.utils.helpers import get_current_user
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import shutil
 
@@ -46,6 +46,9 @@ async def update_user_profile(
         current_user.phone = profile_data.phone
     if profile_data.avatar_url is not None:
         current_user.avatar_url = profile_data.avatar_url
+    
+    # Fix: Use timezone-aware datetime for last_login
+    current_user.last_login = datetime.now(timezone.utc)
     
     await current_user.save()
     
