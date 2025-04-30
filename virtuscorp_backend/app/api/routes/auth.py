@@ -1,3 +1,5 @@
+# app/api/routes/auth.py - Optimized version
+
 from fastapi import APIRouter, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
@@ -34,50 +36,48 @@ async def register(user: UserCreate):
     }
 
 
-# Fix the login route to handle the case where columns don't exist more gracefully
 @router.post("/login")
 async def login(user: UserLogin, request: Request):
     try:
-        # Проверка пользователя из базы
+        # Verify the user against the database
         user_db = await verify_user(user.email, user.password)
         if not user_db:
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        # Update last login time - only if the column exists
+        # Update last login time - with error handling for missing column
         try:
             user_db.last_login = datetime.utcnow()
             await user_db.save()
         except Exception as e:
-            # If the column doesn't exist, log the error but continue
+            # Log the error but don't fail the login process
             logger.warning(f"Could not update last_login: {str(e)}")
-            # Don't let this error affect the login process
 
-        # Генерация токена
+        # Generate token
         token = create_access_token({"sub": user_db.email})
         
-        # Создаем JSON-ответ
+        # Create response content
         content = {
             "message": "Login successful",
             "access_token": token
         }
         
-        # Создаем response с правильными настройками CORS
+        # Create response with proper cookie settings
         response = JSONResponse(content=content)
         
-        # Устанавливаем cookie с правильными настройками
+        # Set secure cookie - this is critical for authentication
         response.set_cookie(
             key="auth-token",
             value=token,
-            httponly=True,  # Для безопасности в продакшене
-            secure=True,   # Установите True в продакшене с HTTPS
-            samesite="lax", # Более безопасная настройка, работает в большинстве браузеров
+            httponly=True,  # Improves security
+            secure=True,    # For HTTPS
+            samesite="lax", # Safer setting that works in most browsers
             path="/",
-            max_age=3600    # 1 час
+            max_age=86400   # 24 hours - increased from 1 hour
         )
         
         return response
         
     except Exception as e:
-        # Логирование ошибок
+        # Log errors
         logger.error(f"Login error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Login error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
