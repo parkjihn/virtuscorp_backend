@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
 from app.crud.user import create_user, verify_user, get_user_by_email
 from app.utils.helpers import create_access_token
+from app.models.user import User
+from datetime import datetime
 import logging
 
 # Set up logging
@@ -39,6 +41,10 @@ async def login(user: UserLogin, request: Request):
         user_db = await verify_user(user.email, user.password)
         if not user_db:
             raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        # Update last login time
+        user_db.last_login = datetime.utcnow()
+        await user_db.save()
 
         # Генерация токена
         token = create_access_token({"sub": user_db.email})

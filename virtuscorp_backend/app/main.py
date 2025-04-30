@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.middleware.cors import add_cors_middleware
-from app.api.routes import auth, yandex, metrics, reports  # добавлен reports
+from app.api.routes import auth, yandex, metrics, reports, user  # добавлен user
 from tortoise.contrib.fastapi import register_tortoise
 from app.db.database import TORTOISE_ORM
 
@@ -11,7 +11,8 @@ add_cors_middleware(app)
 app.include_router(auth.router, prefix="/auth")
 app.include_router(yandex.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")  
-app.include_router(reports.router, prefix="/api")  # добавлен маршрут для отчетов
+app.include_router(reports.router, prefix="/api")
+app.include_router(user.router, prefix="/api/user")  # добавлен маршрут для пользователя
 
 register_tortoise(
     app,
