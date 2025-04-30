@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 class User(Model):
     id = fields.IntField(pk=True)
     email = fields.CharField(max_length=255, unique=True)
-    password_hash = fields.CharField(max_length=255)
+    password_hash = fields.CharField(max_length=255)  # This field name is correct
     full_name = fields.CharField(max_length=255, null=True)
     position = fields.CharField(max_length=100, null=True)
     department = fields.CharField(max_length=100, null=True)
