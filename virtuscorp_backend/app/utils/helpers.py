@@ -8,13 +8,19 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def create_access_token(data: dict, expires_delta=None):
+    """
+    Create a JWT access token with timezone-aware expiration.
+    """
     to_encode = data.copy()
-    # Fix: Use timezone-aware datetime objects
+    # Use timezone-aware datetime objects
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(request: Request) -> User:
+    """
+    Get the current user from the request token.
+    """
     token = request.cookies.get("auth-token") or request.headers.get("x-auth-token")
     if not token:
         raise HTTPException(status_code=401, detail="No token provided")

@@ -29,6 +29,11 @@ uploaded_files_dir = "uploaded_files"
 if not os.path.exists(uploaded_files_dir):
     os.makedirs(uploaded_files_dir)
 
+# Create reports directory if it doesn't exist
+reports_dir = "reports"
+if not os.path.exists(reports_dir):
+    os.makedirs(reports_dir)
+
 register_tortoise(
     app,
     config=TORTOISE_ORM,

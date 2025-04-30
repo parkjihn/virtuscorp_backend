@@ -1,5 +1,3 @@
-# app/api/routes/auth.py - Optimized version
-
 from fastapi import APIRouter, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from app.schemas.user import UserCreate, UserLogin
@@ -14,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
 @router.post("/register")
 async def register(user: UserCreate):
+    """
+    Register a new user.
+    """
     if user.password != user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
@@ -35,9 +35,11 @@ async def register(user: UserCreate):
         }
     }
 
-
 @router.post("/login")
 async def login(user: UserLogin, request: Request):
+    """
+    Login a user and return an access token.
+    """
     try:
         # Verify the user against the database
         user_db = await verify_user(user.email, user.password)
@@ -46,7 +48,7 @@ async def login(user: UserLogin, request: Request):
 
         # Update last login time - with error handling for missing column
         try:
-            # Fix: Use timezone-aware datetime
+            # Use timezone-aware datetime
             user_db.last_login = datetime.now(timezone.utc)
             await user_db.save()
         except Exception as e:
