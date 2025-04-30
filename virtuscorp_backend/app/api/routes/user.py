@@ -12,6 +12,9 @@ router = APIRouter()
 UPLOAD_DIR = "uploads/avatars"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Maximum file size (5MB)
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB in bytes
+
 @router.get("/profile", response_model=UserProfileResponse)
 async def get_user_profile(current_user: User = Depends(get_current_user)):
     """Get the current user's profile"""
@@ -70,6 +73,17 @@ async def upload_avatar(
             status_code=400,
             detail="Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed."
         )
+    
+    # Check file size
+    contents = await avatar.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File size exceeds the limit of {MAX_FILE_SIZE / (1024 * 1024)}MB."
+        )
+    
+    # Reset file position to start
+    await avatar.seek(0)
     
     # Generate a unique filename
     file_ext = os.path.splitext(avatar.filename)[1]

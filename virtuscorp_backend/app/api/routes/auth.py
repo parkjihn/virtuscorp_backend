@@ -42,9 +42,13 @@ async def login(user: UserLogin, request: Request):
         if not user_db:
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        # Update last login time
-        user_db.last_login = datetime.utcnow()
-        await user_db.save()
+        # Update last login time - only if the column exists
+        try:
+            user_db.last_login = datetime.utcnow()
+            await user_db.save()
+        except Exception as e:
+            # If the column doesn't exist, log the error but continue
+            logger.warning(f"Could not update last_login: {str(e)}")
 
         # Генерация токена
         token = create_access_token({"sub": user_db.email})
@@ -63,7 +67,7 @@ async def login(user: UserLogin, request: Request):
             key="auth-token",
             value=token,
             httponly=True,  # Для безопасности в продакшене
-            secure=False,   # Установите True в продакшене с HTTPS
+            secure=True,   # Установите True в продакшене с HTTPS
             samesite="lax", # Более безопасная настройка, работает в большинстве браузеров
             path="/",
             max_age=3600    # 1 час

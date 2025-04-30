@@ -1,8 +1,10 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.middleware.cors import add_cors_middleware
-from app.api.routes import auth, yandex, metrics, reports, user  # добавлен user
+from app.api.routes import auth, yandex, metrics, reports, user
 from tortoise.contrib.fastapi import register_tortoise
 from app.db.database import TORTOISE_ORM
+import os
 
 app = FastAPI()
 
@@ -12,7 +14,15 @@ app.include_router(auth.router, prefix="/auth")
 app.include_router(yandex.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")  
 app.include_router(reports.router, prefix="/api")
-app.include_router(user.router, prefix="/api/user")  # добавлен маршрут для пользователя
+app.include_router(user.router, prefix="/api/user")
+
+# Mount the uploads directory for serving static files
+# Create the directory if it doesn't exist
+uploads_dir = "uploads"
+if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir)
+    
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 register_tortoise(
     app,
