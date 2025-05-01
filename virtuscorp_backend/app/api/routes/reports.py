@@ -1,12 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
-from app.utils.helpers import get_current_user
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import FileResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.dependencies import get_db
+from app.core.security import get_current_active_user
 from app.models.user import User
-from app.models.report import Report
-from app.schemas.report import ReportCreate, ReportResponse
-from typing import List, Optional, Dict, Any
+from app.schemas.report import ReportCreate, ReportRead, ReportUpdate
+from app.crud import crud_report
+from app.utils.report_generator import generate_financial_report  # Example report generator
+import os
+import uuid
+import traceback
+from app.models.report import Report  # Import the Report model
+from app.utils.helpers import get_current_user
+from app.schemas.report import ReportResponse
+from typing import List, Optional
 import pandas as pd
 import io
-import os
 import json
 from datetime import datetime, timezone
 from reportlab.lib.pagesizes import letter
@@ -17,7 +28,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import tempfile
 import glob
-import traceback
 
 router = APIRouter()
 UPLOAD_DIR = "uploaded_files"
@@ -32,6 +42,91 @@ except Exception as e:
     print(f"Warning: Could not register DejaVuSans font: {str(e)}")
     # If the font is not found, we'll use the standard font
 
+
+@router.post("/", response_model=ReportRead)
+async def create_report(
+    report_in: ReportCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Create a new report.
+    """
+    report_in.user_id = current_user.id
+    report = await crud_report.report.create(db, obj_in=report_in)
+    return report
+
+
+@router.get("/{report_id}", response_model=ReportRead)
+async def read_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Get a report by ID.
+    """
+    report = await crud_report.report.get(db, id=report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if report.user_id != current_user.id:
+        raise HTTPException(status_code=400, detail="Not enough permissions")
+    return report
+
+
+@router.put("/{report_id}", response_model=ReportRead)
+async def update_report(
+    report_id: int,
+    report_in: ReportUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Update a report.
+    """
+    report = await crud_report.report.get(db, id=report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if report.user_id != current_user.id:
+        raise HTTPException(status_code=400, detail="Not enough permissions")
+    report = await crud_report.report.update(db, db_obj=report, obj_in=report_in)
+    return report
+
+
+@router.delete("/{report_id}", response_model=ReportRead)
+async def delete_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Delete a report.
+    """
+    report = await crud_report.report.get(db, id=report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if report.user_id != current_user.id:
+        raise HTTPException(status_code=400, detail="Not enough permissions")
+    report = await crud_report.report.remove(db, id=report_id)
+    return report
+
+
+@router.get("/", response_model=list[ReportRead])
+async def read_reports(
+    db: AsyncSession = Depends(get_db),
+    skip: int = Query(0, alias="offset"),
+    limit: int = Query(10, alias="limit"),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Get all reports for the current user.
+    """
+    reports = await crud_report.report.get_multi_by_owner(
+        db, user_id=current_user.id, skip=skip, limit=limit
+    )
+    return reports
+
+
 @router.post("/reports/generate", response_class=Response)
 async def generate_report(
     report_data: dict,
@@ -42,6 +137,8 @@ async def generate_report(
     Returns a PDF file.
     """
     try:
+        # Log the current user information for debugging
+        print(f"Report generation requested by user ID: {current_user.id}, email: {current_user.email}")
         print(f"Generating report with data: {json.dumps(report_data, default=str)}")
         
         # Find the latest uploaded file for the user
@@ -169,18 +266,23 @@ async def generate_report(
         
         # Create a record in the database for the generated report
         try:
+            # Log the current user ID to verify it's being passed correctly
+            print(f"Creating report with user ID: {current_user.id}")
+            
             report = await Report.create(
                 title=report_title,
-                user=current_user,
+                user=current_user,  # Pass the entire user object
                 report_type=report_data.get("report_type", "financial"),
                 status="completed",
                 filters_applied=report_data.get("filters", ""),
                 export_format=report_data.get("export_format", "pdf"),
                 file_path=file_path
             )
-            print(f"Created report record with ID: {report.id}")
+            print(f"Created report record with ID: {report.id} for user ID: {current_user.id}")
         except Exception as e:
             print(f"Error creating report record: {str(e)}")
+            traceback_str = traceback.format_exc()
+            print(f"Traceback: {traceback_str}")
             # Continue even if the database record creation fails
         
         # Return the PDF file
@@ -205,139 +307,4 @@ async def generate_report(
         raise HTTPException(
             status_code=500, 
             detail=f"Error generating report: {str(e)}"
-        )
-
-@router.get("/reports", response_model=List[ReportResponse])
-async def get_reports(current_user: User = Depends(get_current_user)):
-    """Get a list of reports for the current user"""
-    try:
-        reports = await Report.filter(user=current_user).order_by("-created_at")
-        return reports
-    except Exception as e:
-        print(f"Error getting reports: {str(e)}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Error retrieving reports: {str(e)}"
-        )
-
-@router.get("/reports/{report_id}", response_model=ReportResponse)
-async def get_report(report_id: int, current_user: User = Depends(get_current_user)):
-    """Get a specific report by ID"""
-    report = await Report.get_or_none(id=report_id, user=current_user)
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    return report
-
-@router.get("/reports/{report_id}/download")
-async def download_report(report_id: int, current_user: User = Depends(get_current_user)):
-    """Download a specific report by ID"""
-    try:
-        # Get the report from the database
-        report = await Report.get_or_none(id=report_id, user=current_user)
-        if not report:
-            raise HTTPException(status_code=404, detail="Report not found")
-        
-        # Check if the report has a file path
-        if not hasattr(report, 'file_path') or not report.file_path or not os.path.exists(report.file_path):
-            # If no file exists, regenerate the report
-            # This is a simplified version - in a real app, you'd use the original parameters
-            print(f"Report file not found at {getattr(report, 'file_path', 'None')}, regenerating...")
-            
-            # Find the latest uploaded file for the user
-            files = glob.glob(f"{UPLOAD_DIR}/user_{current_user.id}_*")
-            if not files:
-                raise HTTPException(status_code=404, detail="No data file found to regenerate report")
-            
-            latest_file = max(files, key=os.path.getctime)
-            
-            # Read the data
-            if latest_file.endswith(".csv"):
-                df = pd.read_csv(latest_file)
-            else:
-                df = pd.read_excel(latest_file)
-            
-            # Generate a new PDF
-            buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=letter)
-            elements = []
-            
-            # Add title
-            styles = getSampleStyleSheet()
-            title_style = styles["Heading1"]
-            elements.append(Paragraph(report.title, title_style))
-            
-            # Add data as table
-            headers = df.columns.tolist()
-            data = [headers]
-            for _, row in df.iterrows():
-                data.append([str(x) for x in row.tolist()])
-            
-            table = Table(data)
-            table_style = TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 12),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ])
-            table.setStyle(table_style)
-            elements.append(table)
-            
-            # Build PDF
-            doc.build(elements)
-            pdf_data = buffer.getvalue()
-            buffer.close()
-            
-            # Generate a new filename and save it
-            timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-            filename = f"regenerated_report_{report_id}_{timestamp}.pdf"
-            file_path = os.path.join(REPORTS_DIR, filename)
-            
-            # Save the regenerated file
-            with open(file_path, "wb") as f:
-                f.write(pdf_data)
-            
-            # Update the report record with the new file path
-            report.file_path = file_path
-            await report.save()
-            
-            # Return the regenerated PDF
-            return Response(
-                content=pdf_data,
-                media_type="application/pdf",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"'
-                }
-            )
-        
-        # If the file exists, read it and return it
-        with open(report.file_path, "rb") as f:
-            file_content = f.read()
-        
-        # Get the filename from the path
-        filename = os.path.basename(report.file_path)
-        
-        # Return the file
-        return Response(
-            content=file_content,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
-        )
-    
-    except HTTPException as e:
-        # Re-raise HTTP exceptions
-        raise e
-    except Exception as e:
-        print(f"Error downloading report: {str(e)}")
-        traceback_str = traceback.format_exc()
-        print(f"Traceback: {traceback_str}")
-        
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error downloading report: {str(e)}"
         )

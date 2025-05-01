@@ -23,17 +23,23 @@ async def get_current_user(request: Request) -> User:
     """
     token = request.cookies.get("auth-token") or request.headers.get("x-auth-token")
     if not token:
+        print("Authentication error: No token provided")
         raise HTTPException(status_code=401, detail="No token provided")
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         if not email:
+            print("Authentication error: Invalid token (no email in payload)")
             raise HTTPException(status_code=401, detail="Invalid token")
 
         user = await User.get_or_none(email=email)
         if not user:
+            print(f"Authentication error: User not found for email: {email}")
             raise HTTPException(status_code=401, detail="User not found")
+        
+        print(f"Successfully authenticated user: {user.id} ({user.email})")
         return user
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT decode error: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid token")
