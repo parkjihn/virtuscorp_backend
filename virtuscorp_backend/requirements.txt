@@ -12,3 +12,4 @@ pandas
 python-multipart
 openpyxl
 reportlab
+sqlalchemy
