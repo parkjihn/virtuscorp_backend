@@ -65,6 +65,9 @@ async def generate_report(
     Returns a PDF file.
     """
     try:
+        # Log the current user information for debugging
+        print(f"Report generation requested by user ID: {current_user.id}, email: {current_user.email}")
+        
         # Find the latest uploaded file for the user
         files = glob.glob(f"{UPLOAD_DIR}/user_{current_user.id}_*")
         if not files:
@@ -74,6 +77,7 @@ async def generate_report(
             )
         
         latest_file = max(files, key=os.path.getctime)
+        print(f"Using file: {latest_file}")
         
         # Read the data from the file
         try:
@@ -87,7 +91,12 @@ async def generate_report(
                     status_code=400, 
                     detail="The data file is empty."
                 )
+            
+            print(f"Data loaded successfully. Shape: {df.shape}")
         except Exception as e:
+            print(f"Error reading data file: {str(e)}")
+            traceback_str = traceback.format_exc()
+            print(f"Traceback: {traceback_str}")
             raise HTTPException(
                 status_code=500, 
                 detail=f"Failed to read data file: {str(e)}"
@@ -134,19 +143,42 @@ async def generate_report(
         with open(file_path, "wb") as f:
             f.write(pdf_data)
         
-        # Create a record in the database
+        # Create a record in the database - FIX FOR FOREIGN KEY ISSUE
         try:
+            # Debug: Print user details to verify
+            print(f"Creating report record with user ID: {current_user.id}")
+            print(f"User model details: {current_user.__dict__}")
+            
+            # First check if the user exists in the database
+            user_exists = await User.exists(id=current_user.id)
+            if not user_exists:
+                print(f"WARNING: User with ID {current_user.id} does not exist in the database")
+                # Return the PDF without creating a record
+                return Response(
+                    content=pdf_data,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{filename}"'
+                    }
+                )
+            
+            # Try creating the report with user_id instead of user object
             report = await Report.create(
                 title=report_title,
-                user=current_user,
+                user_id=current_user.id,  # Use user_id instead of user
                 report_type=report_data.report_type,
                 status="completed",
                 filters_applied=report_data.filters or "",
                 export_format=report_data.export_format,
                 file_path=file_path
             )
+            
+            print(f"Created report record with ID: {report.id}")
         except Exception as e:
             print(f"Error creating report record: {str(e)}")
+            traceback_str = traceback.format_exc()
+            print(f"Traceback: {traceback_str}")
+            # Continue even if the database record creation fails
         
         # Return the PDF file
         return Response(
