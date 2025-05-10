@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/acme.json:/acme.json
+    command:
+      - "--log.level=DEBUG"
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.swarmmode=true"
+      - "--providers.docker.network=virtuscorp_network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.email=mikeondar@gmail.com"
+      - "--certificatesresolvers.le.acme.storage=/acme.json"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+    networks:
+      - virtuscorp_network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  api:
+    image: mikeondar416/virtuscorp_backend:latest
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    secrets:
+      - db_password
+      - db_url
+    environment:
+      - DATABASE_URL_FILE=/run/secrets/db_url
+    networks:
+      - virtuscorp_network
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.api.rule=Host(`api.virtuscorp.site`)"
+        - "traefik.http.routers.api.service=api-service"
+        - "traefik.http.routers.api.entrypoints=websecure"
+        - "traefik.http.routers.api.tls=true"
+        - "traefik.http.routers.api.tls.certresolver=le"
+        - "traefik.http.services.api-service.loadbalancer.server.port=8000"
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: virtuscorp_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    secrets:
+      - db_password
+    networks:
+      - virtuscorp_network
+    deploy:
+      replicas: 1
+
+volumes:
+  postgres_data:
+
+secrets:
+  db_password:
+    external: true
+  db_url:
+    external: true
+
+networks:
+  virtuscorp_network:
+    driver: overlay
+    attachable: true
+    name: virtuscorp_network
